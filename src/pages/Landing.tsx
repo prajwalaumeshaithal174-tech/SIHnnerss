@@ -1,112 +1,14 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
+import { CONTINUE_LABEL, LANGUAGES } from "@/lib/languages";
 
-type Language = {
-  code: string;
-  native: string;
-  roman: string;
-  /** "Choose your language", translated. */
-  label: string;
-  /** Short tagline, translated. */
-  tagline: string;
-  dir?: "rtl";
-};
-
-/** v1 — language selection. Supported languages, all major Indian scripts + English. */
-const LANGUAGES: Language[] = [
-  {
-    code: "en",
-    native: "English",
-    roman: "English",
-    label: "Choose your language",
-    tagline: "Your business, in your language.",
-  },
-  {
-    code: "hi",
-    native: "हिन्दी",
-    roman: "Hindi",
-    label: "अपनी भाषा चुनें",
-    tagline: "आपका व्यवसाय, आपकी भाषा में।",
-  },
-  {
-    code: "mr",
-    native: "मराठी",
-    roman: "Marathi",
-    label: "तुमची भाषा निवडा",
-    tagline: "तुमचा व्यवसाय, तुमच्या भाषेत।",
-  },
-  {
-    code: "bn",
-    native: "বাংলা",
-    roman: "Bengali",
-    label: "আপনার ভাষা নির্বাচন করুন",
-    tagline: "আপনার ব্যবসা, আপনার ভাষায়।",
-  },
-  {
-    code: "ta",
-    native: "தமிழ்",
-    roman: "Tamil",
-    label: "உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்",
-    tagline: "உங்கள் தொழில், உங்கள் மொழியில்.",
-  },
-  {
-    code: "te",
-    native: "తెలుగు",
-    roman: "Telugu",
-    label: "మీ భాషను ఎంచుకోండి",
-    tagline: "మీ వ్యాపారం, మీ భాషలో.",
-  },
-  {
-    code: "kn",
-    native: "ಕನ್ನಡ",
-    roman: "Kannada",
-    label: "ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
-    tagline: "ನಿಮ್ಮ ವ್ಯಾಪಾರ, ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ.",
-  },
-  {
-    code: "ml",
-    native: "മലയാളം",
-    roman: "Malayalam",
-    label: "നിങ്ങളുടെ ഭാഷ തിരഞ്ഞെടുക്കുക",
-    tagline: "നിങ്ങളുടെ സംരംഭം, നിങ്ങളുടെ ഭാഷയിൽ.",
-  },
-  {
-    code: "gu",
-    native: "ગુજરાતી",
-    roman: "Gujarati",
-    label: "તમારી ભાષા પસંદ કરો",
-    tagline: "તમારો વ્યવસાય, તમારી ભાષામાં.",
-  },
-  {
-    code: "or",
-    native: "ଓଡ଼ିଆ",
-    roman: "Odia",
-    label: "ଆପଣଙ୍କ ଭାଷା ବାଛନ୍ତୁ",
-    tagline: "ଆପଣଙ୍କ ବ୍ୟବସାୟ, ଆପଣଙ୍କ ଭାଷାରେ।",
-  },
-  {
-    code: "pa",
-    native: "ਪੰਜਾਬੀ",
-    roman: "Punjabi",
-    label: "ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ",
-    tagline: "ਤੁਹਾਡਾ ਕਾਰੋਬਾਰ, ਤੁਹਾਡੀ ਭਾਸ਼ਾ ਵਿੱਚ।",
-  },
-  {
-    code: "ur",
-    native: "اردو",
-    roman: "Urdu",
-    label: "اپنی زبان منتخب کریں",
-    tagline: "آپ کا کاروبار، آپ کی زبان میں۔",
-    dir: "rtl",
-  },
-];
-
-/** Signature easing — slow-out editorial glide. */
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 export default function Landing() {
   const prefersReducedMotion = useReducedMotion();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -117,6 +19,11 @@ export default function Landing() {
   const selectedLanguage = LANGUAGES.find((lang) => lang.code === selected);
 
   const blur = (px: number) => ({ filter: `blur(${px}px)` });
+
+  const goNext = () => {
+    if (!selected) return;
+    navigate(`/login?lang=${encodeURIComponent(selected)}`);
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -289,6 +196,28 @@ export default function Landing() {
           })}
         </div>
 
+        {/* Continue — appears once a language is chosen */}
+        <div className="mt-11 flex min-h-[52px] w-full max-w-[58rem] items-center justify-center sm:mt-14">
+          <AnimatePresence>
+            {selectedLanguage && (
+              <motion.button
+                key="continue"
+                type="button"
+                lang={selectedLanguage.code}
+                initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 14, ...(prefersReducedMotion ? {} : blur(8)) }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: prefersReducedMotion ? 0 : -10, ...(prefersReducedMotion ? {} : blur(6)) }}
+                transition={{ duration: 0.5, ease: EASE }}
+                onClick={goNext}
+                className="group inline-flex h-12 items-center gap-3 rounded-md bg-[#4f6d7a] px-8 text-[15px] font-semibold tracking-[0.01em] text-[#f6fafc] transition-[background-color,box-shadow] duration-300 ease-out hover:bg-[#425e69] hover:shadow-[0_18px_42px_-16px_rgba(79,109,122,0.7)] focus-visible:ring-2 focus-visible:ring-[#4f6d7a]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                {CONTINUE_LABEL[selectedLanguage.code] ?? "Continue"}
+                <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* Status microline */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -298,7 +227,7 @@ export default function Landing() {
             ease: EASE,
             delay: 0.9 + LANGUAGES.length * 0.02,
           }}
-          className="mt-12 flex w-full max-w-[58rem] items-center justify-between gap-6 border-t border-foreground/10 pt-4 text-[9px] uppercase tracking-[0.22em] text-muted-foreground sm:mt-14 sm:text-[10px]"
+          className="mt-10 flex w-full max-w-[58rem] items-center justify-between gap-6 border-t border-foreground/10 pt-4 text-[9px] uppercase tracking-[0.22em] text-muted-foreground sm:mt-12 sm:text-[10px]"
         >
           <span aria-hidden="true" className="hidden sm:inline">
             Hyper · Demo build — V1
@@ -308,7 +237,7 @@ export default function Landing() {
           </span>
           <span role="status" aria-live="polite" className="text-right">
             {selectedLanguage
-              ? `Selected — ${selectedLanguage.roman}`
+              ? `${selectedLanguage.native} · ${selectedLanguage.roman} selected`
               : "Select a language to continue"}
           </span>
         </motion.div>
