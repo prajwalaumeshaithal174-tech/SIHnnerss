@@ -2,7 +2,14 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { CONTINUE_LABEL, LANGUAGES } from "@/lib/languages";
+import {
+  CONTINUE_LABEL,
+  EN_LABEL,
+  EN_TAGLINE,
+  LANGUAGES,
+  hasLocalizedCopy,
+  languageByCode,
+} from "@/lib/languages";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -12,11 +19,16 @@ export default function Landing() {
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
 
-  // Hero copy follows the hovered language first, then the selected one.
-  const activeCode = hovered ?? selected;
-  const active =
-    LANGUAGES.find((lang) => lang.code === activeCode) ?? LANGUAGES[0];
   const selectedLanguage = LANGUAGES.find((lang) => lang.code === selected);
+  // Hero copy follows the hovered/selected language, but only for languages
+  // that ship their own translated copy — others keep the English chrome.
+  const hoveredLanguage = LANGUAGES.find((lang) => lang.code === hovered);
+  const heroLanguage =
+    (hoveredLanguage && hasLocalizedCopy(hoveredLanguage)
+      ? hoveredLanguage
+      : selectedLanguage && hasLocalizedCopy(selectedLanguage)
+        ? selectedLanguage
+        : languageByCode("en")) ?? languageByCode("en");
 
   const blur = (px: number) => ({ filter: `blur(${px}px)` });
 
@@ -55,9 +67,9 @@ export default function Landing() {
         <div className="mt-9 w-full sm:mt-10">
           <AnimatePresence mode="wait">
             <motion.h1
-              key={active.code}
-              lang={active.code}
-              dir={active.dir}
+              key={heroLanguage.code}
+              lang={heroLanguage.code}
+              dir={heroLanguage.dir}
               initial={{
                 opacity: 0,
                 y: prefersReducedMotion ? 0 : 20,
@@ -72,7 +84,7 @@ export default function Landing() {
               transition={{ duration: 0.6, ease: EASE }}
               className="mx-auto max-w-3xl text-center font-display text-4xl font-bold leading-[1.12] tracking-[-0.02em] sm:text-5xl lg:text-6xl"
             >
-              {active.label}
+              {heroLanguage.label ?? EN_LABEL}
             </motion.h1>
           </AnimatePresence>
         </div>
@@ -81,9 +93,9 @@ export default function Landing() {
         <div className="mt-5 min-h-10 sm:min-h-8">
           <AnimatePresence mode="wait">
             <motion.p
-              key={`tagline-${active.code}`}
-              lang={active.code}
-              dir={active.dir}
+              key={`tagline-${heroLanguage.code}`}
+              lang={heroLanguage.code}
+              dir={heroLanguage.dir}
               initial={{
                 opacity: 0,
                 y: prefersReducedMotion ? 0 : 10,
@@ -98,7 +110,7 @@ export default function Landing() {
               transition={{ duration: 0.5, ease: EASE }}
               className="mx-auto max-w-xl text-center text-sm leading-relaxed text-muted-foreground sm:text-[15px]"
             >
-              {active.tagline}
+              {heroLanguage.tagline ?? EN_TAGLINE}
             </motion.p>
           </AnimatePresence>
         </div>
