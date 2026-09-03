@@ -1,0 +1,42 @@
+{
+  "category": "Furniture",
+  "businessType": "Furniture",
+  "landBuilding": {
+    "type": null
+  },
+  "fixedCapital": {
+    "machineryEquipment": null,
+    "miscellaneousAssets": null,
+    "preliminaryExpenses": null,
+    "total": null
+  },
+  "operatingExpenses": {
+    "monthlyRawMaterials": null,
+    "monthlyWages": null,
+    "monthlyUtilitiesOther": null,
+    "monthlyTotal": null
+  },
+  "workingCapital": {
+    "amount": null,
+    "method": {
+      "rawMaterialMonths": null,
+      "otherExpenseMonths": null
+    }
+  },
+  "projectCost": {
+    "total": null
+  },
+  "referenceFinance": {
+    "ownFund": null,
+    "termLoan": null,
+    "workingCapitalLoan": null
+  },
+  "profitability": {
+    "monthlySales": null,
+    "monthlyCostOfProduction": null,
+    "monthlyGrossProfit": null,
+    "monthlyNetProfitBeforeTax": null,
+    "annualProfit": null,
+    "roi": null
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "category": "Agriculture",
+  "businessType": "Agricultural Implements, Cutleries & Hand Tools",
+  "landBuilding": {
+    "type": "rented"
+  },
+  "fixedCapital": {
+    "machineryEquipment": 150000,
+    "miscellaneousAssets": 25000,
+    "preliminaryExpenses": 5000,
+    "total": 180000
+  },
+  "operatingExpenses": {
+    "monthlyRawMaterials": 60000,
+    "monthlyWages": 16000,
+    "monthlyUtilitiesOther": 14000,
+    "monthlyTotal": 90000
+  },
+  "workingCapital": {
+    "amount": 150000,
+    "method": {
+      "rawMaterialMonths": 2,
+      "otherExpenseMonths": 1
+    }
+  },
+  "projectCost": {
+    "total": 330000
+  },
+  "referenceFinance": {
+    "ownFund": 114000,
+    "termLoan": 126000,
+    "workingCapitalLoan": 90000
+  },
+  "profitability": {
+    "monthlySales": 110000,
+    "monthlyCostOfProduction": 91833,
+    "monthlyGrossProfit": 18167,
+    "monthlyNetProfitBeforeTax": 11427,
+    "annualProfit": 137124,
+    "roi": 41.55
+  }
+}
