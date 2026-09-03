@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/select";
 import { Micro, Reveal } from "@/components/studio-kit";
 import { languageByCode } from "@/lib/languages";
+import { isRtl, t } from "@/lib/locales";
 import {
   SECTORS,
   saveDraft,
+  sectorLabel,
   type CategoryCode,
   type DraftInput,
 } from "@/lib/hyper";
@@ -123,14 +125,13 @@ export default function LoginPage() {
 
   const validate = (): boolean => {
     const next: FieldErrors = {};
-    if (name.trim().length < 2) next.name = "Please enter your full name.";
-    if (place.trim().length < 2) next.place = "Please enter your city or town.";
-    if (phone.length !== 10)
-      next.phone = "Enter a 10-digit mobile number — digits only, no + or 91.";
+    if (name.trim().length < 2) next.name = t(lang.code, "login.errName");
+    if (place.trim().length < 2) next.place = t(lang.code, "login.errPlace");
+    if (phone.length !== 10) next.phone = t(lang.code, "login.errPhone");
     const capital = Number.parseInt(capitalRaw, 10);
     if (!capitalRaw || !Number.isFinite(capital) || capital <= 0)
-      next.capital = "Enter your planned capital in ₹ (digits only).";
-    if (!category) next.category = "Choose the sector closest to your business.";
+      next.capital = t(lang.code, "login.errCapital");
+    if (!category) next.category = t(lang.code, "login.errCategory");
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -169,8 +170,22 @@ export default function LoginPage() {
   const inputClass =
     "h-11 w-full rounded-md border border-input bg-background/60 text-[15px] text-foreground shadow-none transition-colors focus-visible:border-[#4f6d7a] focus-visible:ring-[3px] focus-visible:ring-[#4f6d7a]/25";
 
+  const tt = (key: Parameters<typeof t>[1], vars?: Parameters<typeof t>[2]) =>
+    t(lang.code, key, vars);
+
+  const sectorItems = useMemo(() => {
+    return sectorsSorted.map((sector) => ({
+      code: sector.code,
+      label: sectorLabel(lang.code, sector.code),
+    }));
+  }, [lang.code]);
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <div
+      dir={isRtl(lang.code) ? "rtl" : undefined}
+      lang={lang.code}
+      className="relative min-h-screen overflow-hidden bg-background text-foreground"
+    >
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-2 z-0 rounded-[3px] border border-foreground/10 sm:inset-3"
@@ -190,7 +205,7 @@ export default function LoginPage() {
             className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-foreground sm:text-[11px]"
           >
             <ArrowLeft className="size-3.5" />
-            Languages
+            {tt("login.back")}
           </button>
           <span className="inline-flex items-center gap-2 rounded-full border border-foreground/15 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
             {lang.native}
@@ -213,15 +228,14 @@ export default function LoginPage() {
             </span>
             <span aria-hidden="true" className="h-px w-6 bg-border" />
             <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-[11px]">
-              Step 2 of 3
+              {tt("login.step")}
             </span>
           </div>
           <h1 className="mt-6 font-display text-3xl font-bold leading-[1.12] tracking-[-0.02em] sm:text-5xl">
-            <Reveal text="Tell us about your business" delay={0.25} />
+            <Reveal text={tt("login.title")} delay={0.25} />
           </h1>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-            A few details are enough — Hyper sizes your market and prepares
-            both reports in one go. No sign-up, nothing leaves this device.
+            {tt("login.subtitle")}
           </p>
         </motion.header>
 
@@ -233,50 +247,50 @@ export default function LoginPage() {
           className="mt-10 w-full rounded-md border border-foreground/12 bg-card/85 p-6 shadow-[0_40px_90px_-60px_rgba(31,41,51,0.55)] sm:mt-12 sm:p-8"
         >
           <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
-            <Field label="Name" error={errors.name}>
+            <Field label={tt("login.labelName")} error={errors.name}>
               <Input
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
                   if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                 }}
-                placeholder="e.g. Priya Sharma"
+                placeholder={tt("login.phName")}
                 autoComplete="name"
                 className={inputClass}
               />
             </Field>
 
-            <Field label="Place" error={errors.place}>
+            <Field label={tt("login.labelPlace")} error={errors.place}>
               <Input
                 value={place}
                 onChange={(e) => {
                   setPlace(e.target.value);
                   if (errors.place) setErrors((prev) => ({ ...prev, place: undefined }));
                 }}
-                placeholder="e.g. Nashik"
+                placeholder={tt("login.phPlace")}
                 autoComplete="address-level2"
                 className={inputClass}
               />
             </Field>
 
-            <Field label="Phone number" error={errors.phone}>
+            <Field label={tt("login.labelPhone")} error={errors.phone}>
               <Input
                 value={phone}
                 onChange={(e) => {
                   setPhone(cleanPhone(e.target.value));
                   if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
                 }}
-                placeholder="10-digit mobile"
+                placeholder={tt("login.phPhone")}
                 inputMode="numeric"
                 autoComplete="tel-national"
                 className={cn(inputClass, "tracking-[0.08em] tabular-nums")}
               />
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                Digits only — no +, no 91 prefix.
+                {tt("login.hintPhone")}
               </p>
             </Field>
 
-            <Field label="Capital (₹)" error={errors.capital}>
+            <Field label={tt("login.labelCapital")} error={errors.capital}>
               <div className="relative">
                 <span
                   aria-hidden="true"
@@ -291,18 +305,18 @@ export default function LoginPage() {
                     setCapitalRaw(raw);
                     if (errors.capital) setErrors((prev) => ({ ...prev, capital: undefined }));
                   }}
-                  placeholder="e.g. 5,00,000"
+                  placeholder={tt("login.phCapital")}
                   inputMode="numeric"
                   className={cn(inputClass, "pl-8 tabular-nums")}
                 />
               </div>
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                Amount you can invest to start the business.
+                {tt("login.hintCapital")}
               </p>
             </Field>
 
             <div className="sm:col-span-2">
-              <Field label="Business category" error={errors.category}>
+              <Field label={tt("login.labelCategory")} error={errors.category}>
                 <Select
                   value={category || undefined}
                   onValueChange={(value) => {
@@ -311,10 +325,10 @@ export default function LoginPage() {
                   }}
                 >
                   <SelectTrigger className="h-11 w-full rounded-md border-input bg-background/60 text-[15px] shadow-none">
-                    <SelectValue placeholder="Select your sector" />
+                    <SelectValue placeholder={tt("login.phCategory")} />
                   </SelectTrigger>
                   <SelectContent className="bg-card">
-                    {sectorsSorted.map((sector) => (
+                    {sectorItems.map((sector) => (
                       <SelectItem key={sector.code} value={sector.code}>
                         {sector.label}
                       </SelectItem>
@@ -333,17 +347,17 @@ export default function LoginPage() {
                 {submitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Preparing your reports…
+                    {tt("login.submitting")}
                   </>
                 ) : (
                   <>
-                    Get my report
+                    {tt("login.submit")}
                     <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                   </>
                 )}
               </Button>
               <p className="text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Your details stay on this device — demo build
+                {tt("login.privacy")}
               </p>
             </div>
           </form>
@@ -356,8 +370,8 @@ export default function LoginPage() {
           transition={{ duration: 0.7, ease: EASE, delay: 0.6 }}
           className="mt-10 flex w-full items-center justify-between gap-6 border-t border-foreground/10 pt-4"
         >
-          <Micro>Hyper · Business blueprint</Micro>
-          <Micro className="text-right tabular-nums">Step 02 — Details</Micro>
+          <Micro>{tt("login.footer")}</Micro>
+          <Micro className="text-right tabular-nums">{tt("login.stepMicro")}</Micro>
         </motion.div>
       </main>
     </div>

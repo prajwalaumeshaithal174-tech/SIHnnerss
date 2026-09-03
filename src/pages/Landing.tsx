@@ -2,6 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { t } from "@/lib/locales";
 import {
   CONTINUE_LABEL,
   EN_LABEL,
@@ -20,6 +21,7 @@ export default function Landing() {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const selectedLanguage = LANGUAGES.find((lang) => lang.code === selected);
+  const chromeLang = selectedLanguage?.code ?? "en";
   // Hero copy follows the hovered/selected language, but only for languages
   // that ship their own translated copy — others keep the English chrome.
   const hoveredLanguage = LANGUAGES.find((lang) => lang.code === hovered);
@@ -123,11 +125,11 @@ export default function Landing() {
           className="mt-12 flex w-full max-w-[58rem] items-center gap-4 sm:mt-14"
         >
           <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground sm:text-[11px]">
-            Languages
+            {t(chromeLang, "ui.languages")}
           </span>
           <span aria-hidden="true" className="h-px flex-1 bg-foreground/10" />
           <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
-            {String(LANGUAGES.length).padStart(2, "0")} available
+            {t(chromeLang, "ui.available", { n: String(LANGUAGES.length).padStart(2, "0") })}
           </span>
         </motion.div>
 
@@ -249,8 +251,8 @@ export default function Landing() {
           </span>
           <span role="status" aria-live="polite" className="text-right">
             {selectedLanguage
-              ? `${selectedLanguage.native} · ${selectedLanguage.roman} selected`
-              : "Select a language to continue"}
+              ? `${selectedLanguage.native} · ${selectedLanguage.roman} ${t(chromeLang, "ui.selected")}`
+              : t(chromeLang, "ui.selectPrompt")}
           </span>
         </motion.div>
       </main>

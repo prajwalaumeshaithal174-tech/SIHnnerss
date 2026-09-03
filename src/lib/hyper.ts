@@ -6,6 +6,7 @@
  * place) via this module. No network calls — pure, stable functions so the
  * report is reproducible and refresh-safe.
  */
+import { t as langLocalize } from "./locales";
 
 export type CategoryCode =
   | "grocery"
@@ -118,6 +119,10 @@ export const SECTORS: SectorSpec[] = ROWS.map(
 export const sectorByCode = (code: string): SectorSpec =>
   SECTORS.find((s) => s.code === code) ?? SECTORS.find((s) => s.code === "others")!;
 
+/** Localized sector label, falling back to the English profile name. */
+export const sectorLabel = (lang: string, code: CategoryCode): string =>
+  langLocalize(lang, `sector.${code}` as const, sectorByCode(code).label);
+
 /* ------------------------------------------------------------------ */
 /* Formatting helpers                                                  */
 /* ------------------------------------------------------------------ */
@@ -133,6 +138,8 @@ export const properName = (name: string): string =>
     .trim()
     .toLowerCase()
     .replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+
+import { t as langLocalize } from "./locales";
 
 /** Stable, small hash so the same place always yields the same demo numbers. */
 export const hashText = (text: string): number => {
@@ -275,6 +282,10 @@ export type ReportData = {
 export function computeReport(input: DraftInput): ReportData {
   const capital = clamp(Math.round(input.capital), 0, 10_000_000_000);
   const cat = sectorByCode(input.category);
+  const lang = input.lang || "en";
+  const loc = (key: Parameters<typeof langLocalize>[1], vars?: Parameters<typeof langLocalize>[2]) =>
+    langLocalize(lang, key, vars);
+  const catLabel = sectorLabel(lang, cat.code);
   const hash = hashText(`${input.place}|${cat.code}`);
   const margin = (cat.marginLow + cat.marginHigh) / 2;
 
@@ -285,11 +296,23 @@ export function computeReport(input: DraftInput): ReportData {
   const growthScore = clamp(Math.round(cat.growth * 7), 0, 100);
 
   const factors: Factor[] = [
-    { key: "Demand", value: cat.demand, note: "Everyday need strength in your sector" },
-    { key: "Margins", value: Math.round(margin), note: `Gross margin band ${cat.marginLow}–${cat.marginHigh}%` },
-    { key: "Market access", value: access, note: "Room to win share locally" },
-    { key: "Capital fit", value: capitalFit, note: `Typical setup ≈ ${inr(cat.typical)}` },
-    { key: "Growth", value: growthScore, note: `Sector compounding ~${cat.growth}%/yr` },
+    { key: loc("factor.demand"), value: cat.demand, note: loc("factorNote.demand") },
+    {
+      key: loc("factor.margins"),
+      value: Math.round(margin),
+      note: loc("factorNote.margins", { low: cat.marginLow, high: cat.marginHigh }),
+    },
+    { key: loc("factor.access"), value: access, note: loc("factorNote.access") },
+    {
+      key: loc("factor.capitalFit"),
+      value: capitalFit,
+      note: loc("factorNote.capitalFit", { typical: inr(cat.typical) }),
+    },
+    {
+      key: loc("factor.growth"),
+      value: growthScore,
+      note: loc("factorNote.growth", { growth: cat.growth }),
+    },
   ];
 
   const overall = Math.round(
@@ -319,30 +342,32 @@ export function computeReport(input: DraftInput): ReportData {
 
   /* SWOT — rules from the sector profile + user context. */
   const swot: Swot = { s: [], w: [], o: [], t: [] };
-  if (cat.demand >= 80) swot.s.push(`Sustained, repeat demand for ${cat.label.toLowerCase()} in your catchment.`);
-  if (cat.marginHigh - cat.marginLow >= 18) swot.s.push(`Healthy operating margins (${cat.marginLow}–${cat.marginHigh}%) leave room for rent, staff and price offers.`);
-  if (cat.competition <= 60) swot.s.push("Relatively less crowded field — a well-run local shop can own the neighbourhood.");
-  if (capitalFit >= 85) swot.s.push("Startup capital is at or above the typical setup for this sector.");
-  else swot.s.push("Lean launch profile — low fixed commitments keep month-one risk small.");
-  if (cat.growth >= 11) swot.s.push(`Sector tailwind of ~${cat.growth}% yearly demand growth.`);
-  if (swot.s.length < 3) swot.s.push("Direct, owner-run service quality beats chain consistency nearby.");
+  if (cat.demand >= 80) swot.s.push(loc("swot.s1", { category: catLabel }));
+  if (cat.marginHigh - cat.marginLow >= 18)
+    swot.s.push(loc("swot.s2", { low: cat.marginLow, high: cat.marginHigh }));
+  if (cat.competition <= 60) swot.s.push(loc("swot.s3"));
+  if (capitalFit >= 85) swot.s.push(loc("swot.s4a"));
+  else swot.s.push(loc("swot.s4b"));
+  if (cat.growth >= 11) swot.s.push(loc("swot.s5", { growth: cat.growth }));
+  if (swot.s.length < 3) swot.s.push(loc("swot.s6"));
 
-  if (capitalFit < 70) swot.w.push(`Capital is lean against a typical ${cat.label.toLowerCase()} setup of ~${inr(cat.typical)} — sequence spending.`);
-  if (cat.competition >= 72) swot.w.push("Aggressive organised players (chains + marketplaces) compete on price.");
-  else if (cat.competition >= 62) swot.w.push("Moderate competitive pressure — differentiation will decide footfall.");
-  else swot.w.push("Differentiation is still needed; category margins reward focused offers.");
-  if (swot.w.length < 3) swot.w.push("Early months depend on a small number of repeat customers — nurture them.");
-  if (swot.w.length < 3) swot.w.push("Working capital discipline will matter until sales stabilise.");
+  if (capitalFit < 70)
+    swot.w.push(loc("swot.w1", { category: catLabel, typical: inr(cat.typical) }));
+  if (cat.competition >= 72) swot.w.push(loc("swot.w2a"));
+  else if (cat.competition >= 62) swot.w.push(loc("swot.w2b"));
+  else swot.w.push(loc("swot.w2c"));
+  if (swot.w.length < 3) swot.w.push(loc("swot.w3"));
+  if (swot.w.length < 3) swot.w.push(loc("swot.w4"));
 
-  swot.o.push(`${cat.growth}% category growth + rising local spending favour a new entrant.`);
-  swot.o.push("Festive and season-end demand spikes reward advance stock planning.");
-  swot.o.push("Society groups, offices and schools nearby are a reachable repeat channel.");
-  if (swot.o.length < 3) swot.o.push("Digital maps + local WhatsApp presence make discovery cheap.");
+  swot.o.push(loc("swot.o1", { growth: cat.growth }));
+  swot.o.push(loc("swot.o2"));
+  swot.o.push(loc("swot.o3"));
+  if (swot.o.length < 3) swot.o.push(loc("swot.o4"));
 
-  if (cat.competition >= 70) swot.t.push("Price pressure from chains and quick-commerce in the first year.");
-  swot.t.push("Rent and input-cost inflation can compress thin months.");
-  swot.t.push("Licence / compliance paperwork can slow the launch window.");
-  if (swot.t.length < 3) swot.t.push("Seasonal dips — plan a marketing reserve for the first two quarters.");
+  if (cat.competition >= 70) swot.t.push(loc("swot.t1"));
+  swot.t.push(loc("swot.t2"));
+  swot.t.push(loc("swot.t3"));
+  if (swot.t.length < 3) swot.t.push(loc("swot.t4"));
 
   /* Competitor map. */
   const chainShare = clamp(Math.round(cat.competition * 0.55 - 8), 8, 55);
@@ -351,33 +376,38 @@ export function computeReport(input: DraftInput): ReportData {
   const competitors: Competitor[] = [
     {
       name: cat.chain,
-      format: "Chain / brand",
+      format: loc("compFmt.chain"),
       share: chainShare,
-      pricing: "Band pricing, frequent offers",
-      edge: "Assortment, trust, shelf power",
+      pricing: loc("compPrice.chain"),
+      edge: loc("compEdge.chain"),
     },
     {
-      name: "Online marketplaces",
-      format: "Apps & quick commerce",
+      name: loc("comp.online"),
+      format: loc("compFmt.online"),
       share: onlineShare,
-      pricing: "Discount-led, home delivery",
-      edge: "Convenience and reach",
+      pricing: loc("compPrice.online"),
+      edge: loc("compEdge.online"),
     },
     {
-      name: `Local players around ${properName(input.place)}`,
-      format: "Store / service units",
+      name: loc("comp.local", { place: properName(input.place) }),
+      format: loc("compFmt.local"),
       share: localShare,
-      pricing: "Flexible, relationship pricing",
-      edge: "Proximity, service, credit",
+      pricing: loc("compPrice.local"),
+      edge: loc("compEdge.local"),
     },
   ];
 
   const bandLow = roundTo(cat.ticket * 0.82, 10);
   const bandHigh = roundTo(cat.ticket * 1.18, 10);
-  const positioning =
-    margin >= 32
-      ? `Lead with quality and service at the upper band (${inr(bandLow)}–${inr(bandHigh)}); margins of ${cat.marginLow}–${cat.marginHigh}% carry a premium positioning.`
-      : `Compete on convenience and pack value at the lower band (${inr(bandLow)}–${inr(bandHigh)}); high volume offsets thin ${cat.marginLow}–${cat.marginHigh}% margins.`;
+  const positioning = loc(
+    margin >= 32 ? "pricing.high" : "pricing.low",
+    {
+      low: inr(bandLow),
+      high: inr(bandHigh),
+      mLow: cat.marginLow,
+      mHigh: cat.marginHigh,
+    },
+  );
 
   const feasibility: FeasibilityModel = {
     overall,
@@ -407,11 +437,11 @@ export function computeReport(input: DraftInput): ReportData {
   const loan = roundTo(project * 0.62, 10_000);
   const deployable = project + loan;
   const heads: HeadAllocation[] = [
-    { key: "Fit-out & interiors", amount: roundTo((project * cat.split.fitout) / 100, 100), pct: cat.split.fitout },
-    { key: "Initial stock / raw material", amount: roundTo((project * cat.split.stock) / 100, 100), pct: cat.split.stock },
-    { key: "Equipment & tools", amount: roundTo((project * cat.split.equipment) / 100, 100), pct: cat.split.equipment },
-    { key: "Working capital reserve", amount: roundTo((project * cat.split.working) / 100, 100), pct: cat.split.working },
-    { key: "Marketing & launch", amount: roundTo((project * cat.split.marketing) / 100, 100), pct: cat.split.marketing },
+    { key: loc("head.fitout"), amount: roundTo((project * cat.split.fitout) / 100, 100), pct: cat.split.fitout },
+    { key: loc("head.stock"), amount: roundTo((project * cat.split.stock) / 100, 100), pct: cat.split.stock },
+    { key: loc("head.equipment"), amount: roundTo((project * cat.split.equipment) / 100, 100), pct: cat.split.equipment },
+    { key: loc("head.working"), amount: roundTo((project * cat.split.working) / 100, 100), pct: cat.split.working },
+    { key: loc("head.marketing"), amount: roundTo((project * cat.split.marketing) / 100, 100), pct: cat.split.marketing },
   ];
 
   const ratePct = LOAN_RATE_PCT;
@@ -451,10 +481,10 @@ export function computeReport(input: DraftInput): ReportData {
   const totalInterest = Math.round(interestCum);
 
   const docs = [
-    "PAN card",
-    "Aadhaar",
-    "Bank statements (6 months)",
-    "Address proof",
+    loc("docs.pan"),
+    loc("docs.aadhaar"),
+    loc("docs.bank"),
+    loc("docs.address"),
     cat.licence,
   ];
 

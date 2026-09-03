@@ -30,21 +30,26 @@ import {
   computeReport,
   inr,
   loadDraft,
+  sectorLabel,
   type MonthlyPoint,
   type ReportData,
 } from "@/lib/hyper";
+import { isRtl, t } from "@/lib/locales";
 import { languageByCode } from "@/lib/languages";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 const STORM = "#4f6d7a";
 const SLATE = "#8a97a0";
 
-const monthLabel = (m: number): string => {
-  if (m === 0) return "Today";
-  if (m === 6) return "6 mo";
-  if (m % 12 === 0) return `${m / 12} yr`;
-  return `${m} mo`;
+const monthLabel = (lang: string, m: number): string => {
+  if (m === 0) return t(lang, "emi.today");
+  if (m % 12 === 0) return t(lang, "emi.chartYr", { n: m / 12 });
+  return t(lang, "emi.chartMo", { n: m });
 };
+
+/** Localized grade word, lowercased for mid-sentence use. */
+const gradeLower = (lang: string, tone: string): string =>
+  t(lang, `grades.${tone}` as never).toLowerCase();
 
 /* ------------------------------------------------------------------ */
 /* Chart tooltips                                                      */
@@ -54,16 +59,18 @@ function RupeeTooltip({
   active,
   payload,
   label,
+  lang,
 }: {
   active?: boolean;
-  payload?: { dataKey?: string | number; value?: number | string; color?: string }[];
+  payload?: { dataKey?: string | number; name?: string; value?: number | string; color?: string }[];
   label?: number | string;
+  lang: string;
 }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="rounded-md border border-foreground/15 bg-card px-3 py-2 shadow-lg">
       <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-        {monthLabel(Number(label))}
+        {monthLabel(lang, Number(label))}
       </p>
       {payload.map((entry) => (
         <p
@@ -75,7 +82,7 @@ function RupeeTooltip({
             className="mr-1.5 inline-block size-2 rounded-full"
             style={{ backgroundColor: entry.color ?? STORM }}
           />
-          {String(entry.dataKey)} · {inr(Number(entry.value))}
+          {String(entry.name ?? entry.dataKey)} · {inr(Number(entry.value))}
         </p>
       ))}
     </div>
@@ -112,66 +119,76 @@ function FactorTooltip({
 /* ------------------------------------------------------------------ */
 
 function FeasibilityCard({ data }: { data: ReportData }) {
+  const lang = data.lang || "en";
   const f = data.feasibility;
   const tone = f.tone as Tone;
+  const catLabel = sectorLabel(lang, data.category.code);
 
-  const intro = `A ${data.category.label.toLowerCase()} venture in ${data.place} rates ${f.grade.toLowerCase()} feasibility — driven by strong ${f.factors[0].key.toLowerCase()} (${f.factors[0].value}/100) and ${f.factors[1].key.toLowerCase()} of ${f.factors[1].value}%.`;
+  const hint = t(lang, "f.hint", {
+    category: catLabel.toLowerCase(),
+    place: data.place,
+    grade: gradeLower(lang, f.tone),
+    factor1: f.factors[0].key,
+    score1: f.factors[0].value,
+    factor2: f.factors[1].key,
+    score2: f.factors[1].value,
+  });
 
   return (
-    <Panel className="w-full">
+    <Panel className="w-full" lang={lang}>
       <PanelHeader
-        tag="Report A"
-        title="Business Feasibility"
-        hint={intro}
-        trailing={<ToneChip tone={tone} label={f.grade} />}
+        tag={t(lang, "report.aTag")}
+        title={t(lang, "report.aTitle")}
+        hint={hint}
+        trailing={<ToneChip tone={tone} label={t(lang, `grades.${f.tone}` as never)} />}
       />
 
       {/* Market reach */}
       <Section>
-        <SectionLabel>Market reach</SectionLabel>
+        <SectionLabel>{t(lang, "f.market")}</SectionLabel>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-md border border-foreground/10 bg-background/50 p-3.5">
             <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Addressable demand
+              {t(lang, "f.statAddressable")}
             </p>
             <p className="mt-1.5 font-display text-lg font-bold tracking-[-0.01em] tabular-nums">
               {inr(f.addressableMonthly)}
             </p>
             <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
-              per month, in your catchment
+              {t(lang, "f.statAddressableSub")}
             </p>
           </div>
           <div className="rounded-md border border-foreground/10 bg-background/50 p-3.5">
             <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Realistic share
+              {t(lang, "f.statShare")}
             </p>
             <p className="mt-1.5 font-display text-lg font-bold tracking-[-0.01em] tabular-nums">
               {f.capturePct}%
             </p>
             <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
-              of the market within 12 months
+              {t(lang, "f.statShareSub")}
             </p>
           </div>
           <div className="rounded-md border border-foreground/10 bg-background/50 p-3.5">
             <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Expected turnover
+              {t(lang, "f.statTurnover")}
             </p>
             <p className="mt-1.5 font-display text-lg font-bold tracking-[-0.01em] tabular-nums">
               {inr(f.capturedMonthly)}
             </p>
             <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
-              steady-state monthly sales
+              {t(lang, "f.statTurnoverSub")}
             </p>
           </div>
           <div className="rounded-md border border-foreground/10 bg-background/50 p-3.5">
             <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Break-even sales
+              {t(lang, "f.statBreakeven")}
             </p>
             <p className="mt-1.5 font-display text-lg font-bold tracking-[-0.01em] tabular-nums">
               {inr(f.breakEvenSales)}
             </p>
             <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
-              against {inr(f.fixedMonthly)} monthly fixed cost
+              {t(lang, "f.statBreakevenSub", { cost: inr(f.fixedMonthly) })}
             </p>
           </div>
         </div>
@@ -181,10 +198,9 @@ function FeasibilityCard({ data }: { data: ReportData }) {
       <Section>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <SectionLabel>Opportunity analysis</SectionLabel>
+            <SectionLabel>{t(lang, "f.oppTitle")}</SectionLabel>
             <p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">
-              Five weighted factors decide the verdict. The bars animate as
-              each factor is read against your local context.
+              {t(lang, "f.oppBody")}
             </p>
           </div>
           <p className="text-right">
@@ -193,7 +209,7 @@ function FeasibilityCard({ data }: { data: ReportData }) {
               <span className="text-base font-semibold text-muted-foreground">/100</span>
             </span>
             <span className="mt-0.5 block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Feasibility score
+              {t(lang, "f.score")}
             </span>
           </p>
         </div>
@@ -219,18 +235,18 @@ function FeasibilityCard({ data }: { data: ReportData }) {
 
       {/* SWOT */}
       <Section>
-        <SectionLabel>SWOT — where you stand</SectionLabel>
+        <SectionLabel>{t(lang, "f.swotTitle")}</SectionLabel>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <SwotBox tag="S" label="Strengths" tone={STORM} items={f.swot.s} />
-          <SwotBox tag="W" label="Weaknesses" tone={SLATE} items={f.swot.w} />
-          <SwotBox tag="O" label="Opportunities" tone={STORM} items={f.swot.o} />
-          <SwotBox tag="T" label="Threats" tone="#b08d57" items={f.swot.t} />
+          <SwotBox tag="S" label={t(lang, "f.swotS")} tone={STORM} items={f.swot.s} />
+          <SwotBox tag="W" label={t(lang, "f.swotW")} tone={SLATE} items={f.swot.w} />
+          <SwotBox tag="O" label={t(lang, "f.swotO")} tone={STORM} items={f.swot.o} />
+          <SwotBox tag="T" label={t(lang, "f.swotT")} tone="#b08d57" items={f.swot.t} />
         </div>
       </Section>
 
       {/* Competitor mapping */}
       <Section>
-        <SectionLabel>Competitor mapping</SectionLabel>
+        <SectionLabel>{t(lang, "f.compTitle")}</SectionLabel>
         <div className="mt-3">
           {f.competitors.map((competitor, index) => (
             <div
@@ -241,7 +257,7 @@ function FeasibilityCard({ data }: { data: ReportData }) {
                 <p className="text-[14px] font-semibold leading-tight">
                   {competitor.name}
                 </p>
-                <Micro className="tabular-nums">{competitor.share}% of nearby spending</Micro>
+                <Micro className="tabular-nums">{t(lang, "f.compShare", { share: competitor.share })}</Micro>
               </div>
               <GrowBar pct={competitor.share} delay={0.9 + index * 0.12} className="mt-2" />
               <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
@@ -249,10 +265,10 @@ function FeasibilityCard({ data }: { data: ReportData }) {
                   <span className="text-foreground/80">{competitor.format}</span>
                 </p>
                 <p className="text-[11px] leading-snug text-muted-foreground">
-                  Pricing — {competitor.pricing}
+                  {t(lang, "f.compPricing")} — {competitor.pricing}
                 </p>
                 <p className="text-[11px] leading-snug text-muted-foreground">
-                  Edge — {competitor.edge}
+                  {t(lang, "f.compEdge")} — {competitor.edge}
                 </p>
               </div>
             </div>
@@ -262,19 +278,22 @@ function FeasibilityCard({ data }: { data: ReportData }) {
 
       {/* Pricing */}
       <Section>
-        <SectionLabel>Pricing & positioning</SectionLabel>
+        <SectionLabel>{t(lang, "f.pricingTitle")}</SectionLabel>
         <div className="mt-3 flex flex-wrap items-center gap-2.5">
           <span className="rounded-md border border-[#4f6d7a]/40 bg-[#4f6d7a]/[0.07] px-3 py-1.5 font-display text-sm font-bold tabular-nums text-[#3c5a66]">
             {inr(f.pricing.bandLow)}
           </span>
-          <span className="text-xs text-muted-foreground">to</span>
+          <span className="text-xs text-muted-foreground">{t(lang, "f.rangeTo")}</span>
           <span className="rounded-md border border-[#4f6d7a]/40 bg-[#4f6d7a]/[0.07] px-3 py-1.5 font-display text-sm font-bold tabular-nums text-[#3c5a66]">
             {inr(f.pricing.bandHigh)}
           </span>
           <span className="text-[11px] text-muted-foreground">
-            typical ticket for {data.category.label.toLowerCase()} is{" "}
-            {inr(f.pricing.ticket)}; margins run {f.pricing.marginLow}–
-            {f.pricing.marginHigh}%.
+            {t(lang, "f.pricingTicket", {
+              category: catLabel.toLowerCase(),
+              ticket: inr(f.pricing.ticket),
+              low: f.pricing.marginLow,
+              high: f.pricing.marginHigh,
+            })}
           </span>
         </div>
         <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-foreground/85">
@@ -326,23 +345,26 @@ function SwotBox({
 /* ------------------------------------------------------------------ */
 
 function FinancialCard({ data }: { data: ReportData }) {
+  const lang = data.lang || "en";
   const fin = data.financial;
+  const catLabel = sectorLabel(lang, data.category.code);
+
   return (
-    <Panel className="w-full">
+    <Panel className="w-full" lang={lang}>
       <PanelHeader
-        tag="Report B"
-        title="Financial Calculator"
-        hint="Your capital is split across five heads, then checked against typical priority-sector financing terms."
+        tag={t(lang, "report.bTag")}
+        title={t(lang, "report.bTitle")}
+        hint={t(lang, "fin.hint")}
         trailing={
           <span className="rounded-full border border-foreground/15 bg-background/70 px-3.5 py-1.5 text-[11px] font-semibold text-foreground tabular-nums">
-            {inr(fin.deployable)} deployable
+            {t(lang, "fin.deployChip", { value: inr(fin.deployable) })}
           </span>
         }
       />
 
       {/* Project cost */}
       <Section>
-        <SectionLabel>Where your {inr(fin.capital)} goes</SectionLabel>
+        <SectionLabel>{t(lang, "fin.headsTitle", { capital: inr(fin.capital) })}</SectionLabel>
         <div className="mt-4 space-y-4">
           {fin.heads.map((head, index) => (
             <div key={head.key}>
@@ -363,27 +385,30 @@ function FinancialCard({ data }: { data: ReportData }) {
 
       {/* Loan eligibility */}
       <Section>
-        <SectionLabel>Loan eligibility</SectionLabel>
+        <SectionLabel>{t(lang, "fin.loanTitle")}</SectionLabel>
         <div className="mt-3 space-y-0.5">
           <StatRow
-            label="Your capital (equity)"
+            label={t(lang, "fin.rowEquity")}
             value={inr(fin.capital)}
-            sub="Own contribution to the project"
+            sub={t(lang, "fin.rowEquitySub")}
           />
           <StatRow
-            label="Indicative financing line"
+            label={t(lang, "fin.rowLine")}
             value={inr(fin.loan)}
-            sub={`≈ 62% of project cost · ${fin.ratePct}% p.a. assumed, priority-sector terms`}
+            sub={t(lang, "fin.rowLineSub", {
+              pct: Math.round((fin.loan / fin.project) * 100),
+              rate: fin.ratePct,
+            })}
           />
           <StatRow
-            label="Total project size"
+            label={t(lang, "fin.rowProject")}
             value={inr(fin.deployable)}
-            sub="Equity + financing, fully deployable"
+            sub={t(lang, "fin.rowProjectSub")}
           />
         </div>
         <div className="mt-5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Keep these documents ready
+            {t(lang, "fin.docsTitle")}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {fin.docs.map((doc) => (
@@ -402,10 +427,13 @@ function FinancialCard({ data }: { data: ReportData }) {
       <Section>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <SectionLabel>EMI schedule — 5-year horizon</SectionLabel>
+            <SectionLabel>{t(lang, "emi.title")}</SectionLabel>
             <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
-              {inr(fin.postEmi)} per month after an optional {fin.moratoriumMonths}-month
-              moratorium; {inr(fin.preEmi)} if you start repaying immediately.
+              {t(lang, "emi.body", {
+                post: inr(fin.postEmi),
+                mor: fin.moratoriumMonths,
+                pre: inr(fin.preEmi),
+              })}
             </p>
           </div>
           <p className="text-right">
@@ -413,7 +441,7 @@ function FinancialCard({ data }: { data: ReportData }) {
               {inr(fin.postEmi)}
             </span>
             <span className="mt-0.5 block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Monthly EMI
+              {t(lang, "emi.monthly")}
             </span>
           </p>
         </div>
@@ -421,11 +449,11 @@ function FinancialCard({ data }: { data: ReportData }) {
         <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5">
           <span className="inline-flex items-center gap-2 text-[11px] text-muted-foreground">
             <span aria-hidden="true" className="h-0.5 w-5 rounded-full bg-[#4f6d7a]" />
-            Principal outstanding
+            {t(lang, "emi.legendOutstanding")}
           </span>
           <span className="inline-flex items-center gap-2 text-[11px] text-muted-foreground">
             <span aria-hidden="true" className="h-0 w-5 border-t-2 border-dashed border-[#8a97a0]" />
-            Cumulative payments
+            {t(lang, "emi.legendPaid")}
           </span>
         </div>
 
@@ -438,7 +466,7 @@ function FinancialCard({ data }: { data: ReportData }) {
                 type="number"
                 domain={[0, 60]}
                 ticks={[0, 6, 12, 24, 36, 48, 60]}
-                tickFormatter={(value: number) => monthLabel(value)}
+                tickFormatter={(value: number) => monthLabel(lang, value)}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 10, fill: "#5f6b76" }}
@@ -450,11 +478,11 @@ function FinancialCard({ data }: { data: ReportData }) {
                 width={42}
                 tick={{ fontSize: 10, fill: "#5f6b76" }}
               />
-              <Tooltip content={<RupeeTooltip />} />
+              <Tooltip content={<RupeeTooltip lang={lang} />} />
               <Line
                 type="monotone"
                 dataKey="outstanding"
-                name="Principal outstanding"
+                name={t(lang, "emi.legendOutstanding")}
                 stroke={STORM}
                 strokeWidth={2.5}
                 dot={false}
@@ -463,7 +491,7 @@ function FinancialCard({ data }: { data: ReportData }) {
               <Line
                 type="monotone"
                 dataKey="paid"
-                name="Cumulative payments"
+                name={t(lang, "emi.legendPaid")}
                 stroke={SLATE}
                 strokeWidth={2}
                 strokeDasharray="5 5"
@@ -477,29 +505,39 @@ function FinancialCard({ data }: { data: ReportData }) {
 
       {/* Moratorium */}
       <Section>
-        <SectionLabel>Moratorium — how it works for you</SectionLabel>
+        <SectionLabel>{t(lang, "mor.title")}</SectionLabel>
         <ol className="mt-4 space-y-3">
           <MoratoriumStep
             index="01"
-            title={`Months 1–${fin.moratoriumMonths}: repayment pause`}
-            body={`No EMI pressure while the business finds its feet. Interest at ${fin.ratePct}% p.a. is accrued monthly and added to the principal.`}
+            title={t(lang, "mor.step1Title", { n: fin.moratoriumMonths })}
+            body={t(lang, "mor.step1Body", { rate: fin.ratePct })}
           />
           <MoratoriumStep
             index="02"
-            title={`Month ${fin.moratoriumMonths}: balance capitalises`}
-            body={`Your outstanding grows from ${inr(fin.loan)} to ${inr(fin.moratoriumBalance)} — the accrued interest is now part of the loan.`}
+            title={t(lang, "mor.step2Title", { n: fin.moratoriumMonths })}
+            body={t(lang, "mor.step2Body", {
+              from: inr(fin.loan),
+              to: inr(fin.moratoriumBalance),
+            })}
           />
           <MoratoriumStep
             index="03"
-            title={`Months ${fin.moratoriumMonths + 1}–${fin.tenureMonths}: fixed EMI`}
-            body={`A steady ${inr(fin.postEmi)} per month clears the balance over the remaining ${fin.tenureMonths - fin.moratoriumMonths} months. Total interest paid across the loan: ${inr(fin.totalInterest)}.`}
+            title={t(lang, "mor.step3Title", {
+              a: fin.moratoriumMonths + 1,
+              b: fin.tenureMonths,
+            })}
+            body={t(lang, "mor.step3Body", {
+              emi: inr(fin.postEmi),
+              months: fin.tenureMonths - fin.moratoriumMonths,
+              interest: inr(fin.totalInterest),
+            })}
           />
         </ol>
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MiniStat label="Loan amount" value={inr(fin.loan)} />
-          <MiniStat label="Rate (assumed)" value={`${fin.ratePct}% p.a.`} />
-          <MiniStat label="Tenure" value={`${fin.tenureMonths} months`} />
-          <MiniStat label="Total interest" value={inr(fin.totalInterest)} />
+          <MiniStat label={t(lang, "mini.loan")} value={inr(fin.loan)} />
+          <MiniStat label={t(lang, "mini.rate")} value={`${fin.ratePct}% ${t(lang, "unit.pa")}`} />
+          <MiniStat label={t(lang, "mini.tenure")} value={`${fin.tenureMonths} ${t(lang, "unit.months")}`} />
+          <MiniStat label={t(lang, "mini.interest")} value={inr(fin.totalInterest)} />
         </div>
       </Section>
     </Panel>
@@ -556,6 +594,7 @@ export default function ReportPage() {
     return <Navigate to="/login" replace />;
   }
 
+  const lang = data.lang || "en";
   const language = languageByCode(data.lang);
   const slide = (fromLeft: boolean, delay: number) => ({
     initial: {
@@ -572,8 +611,15 @@ export default function ReportPage() {
     navigate("/");
   };
 
+  const gradeText = gradeLower(lang, data.feasibility.tone);
+  const catLabel = sectorLabel(lang, data.category.code);
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <div
+      dir={isRtl(lang) ? "rtl" : undefined}
+      lang={lang}
+      className="relative min-h-screen overflow-hidden bg-background text-foreground"
+    >
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-2 z-0 rounded-[3px] border border-foreground/10 sm:inset-3"
@@ -594,7 +640,7 @@ export default function ReportPage() {
             </span>
             <span aria-hidden="true" className="h-px w-6 bg-border" />
             <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-[11px]">
-              Report ready
+              {t(lang, "report.kicker")}
             </span>
           </div>
           <button
@@ -603,7 +649,7 @@ export default function ReportPage() {
             className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground sm:text-[11px]"
           >
             <RefreshCw className="size-3.5" />
-            New assessment
+            {t(lang, "report.action")}
           </button>
         </motion.div>
 
@@ -614,24 +660,38 @@ export default function ReportPage() {
           transition={{ duration: 0.8, ease: EASE, delay: 0.12 }}
           className="mt-10 max-w-3xl"
         >
-          <Micro className="text-[#4f6d7a]">Prepared for {data.displayName} · {data.generatedOn}</Micro>
+          <Micro className="text-[#4f6d7a]">
+            {t(lang, "report.prepared", { name: data.displayName, date: data.generatedOn })}
+          </Micro>
           <h1 className="mt-3 font-display text-3xl font-bold leading-[1.1] tracking-[-0.02em] sm:text-5xl">
-            <Reveal text={`Your business blueprint for ${data.category.label.toLowerCase()} in ${data.place}`} delay={0.25} />
+            <Reveal
+              text={t(lang, "report.title", { sector: catLabel, place: data.place })}
+              delay={0.25}
+            />
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-relaxed text-foreground/85 sm:text-[15px]">
             <Reveal
               delay={0.55}
-              text={`Overall feasibility: ${data.feasibility.grade.toLowerCase()} (${data.feasibility.overall}/100). With ${inr(data.capital)} of capital, an indicative ${inr(data.financial.loan)} financing line funds a ${inr(data.financial.deployable)} plan. Both reports below — feasibility on the left, financials on the right.`}
+              text={t(lang, "report.intro", {
+                grade: gradeText,
+                score: data.feasibility.overall,
+                capital: inr(data.capital),
+                loan: inr(data.financial.loan),
+                deployable: inr(data.financial.deployable),
+              })}
             />
           </p>
 
           {/* Context chips */}
           <div className="mt-7 flex flex-wrap items-center gap-2">
             {[
-              { k: "Sector", v: data.category.label },
-              { k: "Place", v: data.place },
-              { k: "Capital", v: inr(data.capital) },
-              { k: "Language", v: `${language.native} · ${language.roman}` },
+              { k: t(lang, "report.chipSector"), v: catLabel },
+              { k: t(lang, "report.chipPlace"), v: data.place },
+              { k: t(lang, "report.chipCapital"), v: inr(data.capital) },
+              {
+                k: t(lang, "report.chipLanguage"),
+                v: `${language.native} · ${language.roman}`,
+              },
             ].map((chip) => (
               <span
                 key={chip.k}
@@ -663,9 +723,7 @@ export default function ReportPage() {
           transition={{ duration: 0.8, ease: EASE, delay: 1.4 }}
           className="mx-auto mt-12 max-w-2xl text-center text-[11px] leading-relaxed text-muted-foreground"
         >
-          Indicative estimates generated locally from your inputs for this demo
-          — not financial advice. Validate figures with a bank, CA or your
-          local DIC before committing. Sector data is illustrative.
+          {t(lang, "report.disclaimer")}
         </motion.p>
       </main>
     </div>
