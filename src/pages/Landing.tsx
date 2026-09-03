@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useState } from "react";
 
@@ -6,36 +6,117 @@ type Language = {
   code: string;
   native: string;
   roman: string;
+  /** "Choose your language", translated. */
+  label: string;
+  /** Short tagline, translated. */
+  tagline: string;
   dir?: "rtl";
 };
 
 /** v1 — language selection. Supported languages, all major Indian scripts + English. */
 const LANGUAGES: Language[] = [
-  { code: "en", native: "English", roman: "English" },
-  { code: "hi", native: "हिन्दी", roman: "Hindi" },
-  { code: "mr", native: "मराठी", roman: "Marathi" },
-  { code: "bn", native: "বাংলা", roman: "Bengali" },
-  { code: "ta", native: "தமிழ்", roman: "Tamil" },
-  { code: "te", native: "తెలుగు", roman: "Telugu" },
-  { code: "kn", native: "ಕನ್ನಡ", roman: "Kannada" },
-  { code: "ml", native: "മലയാളം", roman: "Malayalam" },
-  { code: "gu", native: "ગુજરાતી", roman: "Gujarati" },
-  { code: "or", native: "ଓଡ଼ିଆ", roman: "Odia" },
-  { code: "pa", native: "ਪੰਜਾਬੀ", roman: "Punjabi" },
-  { code: "ur", native: "اردو", roman: "Urdu", dir: "rtl" },
+  {
+    code: "en",
+    native: "English",
+    roman: "English",
+    label: "Choose your language",
+    tagline: "Your business, in your language.",
+  },
+  {
+    code: "hi",
+    native: "हिन्दी",
+    roman: "Hindi",
+    label: "अपनी भाषा चुनें",
+    tagline: "आपका व्यवसाय, आपकी भाषा में।",
+  },
+  {
+    code: "mr",
+    native: "मराठी",
+    roman: "Marathi",
+    label: "तुमची भाषा निवडा",
+    tagline: "तुमचा व्यवसाय, तुमच्या भाषेत।",
+  },
+  {
+    code: "bn",
+    native: "বাংলা",
+    roman: "Bengali",
+    label: "আপনার ভাষা নির্বাচন করুন",
+    tagline: "আপনার ব্যবসা, আপনার ভাষায়।",
+  },
+  {
+    code: "ta",
+    native: "தமிழ்",
+    roman: "Tamil",
+    label: "உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்",
+    tagline: "உங்கள் தொழில், உங்கள் மொழியில்.",
+  },
+  {
+    code: "te",
+    native: "తెలుగు",
+    roman: "Telugu",
+    label: "మీ భాషను ఎంచుకోండి",
+    tagline: "మీ వ్యాపారం, మీ భాషలో.",
+  },
+  {
+    code: "kn",
+    native: "ಕನ್ನಡ",
+    roman: "Kannada",
+    label: "ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    tagline: "ನಿಮ್ಮ ವ್ಯಾಪಾರ, ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ.",
+  },
+  {
+    code: "ml",
+    native: "മലയാളം",
+    roman: "Malayalam",
+    label: "നിങ്ങളുടെ ഭാഷ തിരഞ്ഞെടുക്കുക",
+    tagline: "നിങ്ങളുടെ സംരംഭം, നിങ്ങളുടെ ഭാഷയിൽ.",
+  },
+  {
+    code: "gu",
+    native: "ગુજરાતી",
+    roman: "Gujarati",
+    label: "તમારી ભાષા પસંદ કરો",
+    tagline: "તમારો વ્યવસાય, તમારી ભાષામાં.",
+  },
+  {
+    code: "or",
+    native: "ଓଡ଼ିଆ",
+    roman: "Odia",
+    label: "ଆପଣଙ୍କ ଭାଷା ବାଛନ୍ତୁ",
+    tagline: "ଆପଣଙ୍କ ବ୍ୟବସାୟ, ଆପଣଙ୍କ ଭାଷାରେ।",
+  },
+  {
+    code: "pa",
+    native: "ਪੰਜਾਬੀ",
+    roman: "Punjabi",
+    label: "ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ",
+    tagline: "ਤੁਹਾਡਾ ਕਾਰੋਬਾਰ, ਤੁਹਾਡੀ ਭਾਸ਼ਾ ਵਿੱਚ।",
+  },
+  {
+    code: "ur",
+    native: "اردو",
+    roman: "Urdu",
+    label: "اپنی زبان منتخب کریں",
+    tagline: "آپ کا کاروبار، آپ کی زبان میں۔",
+    dir: "rtl",
+  },
 ];
 
 /** Signature easing — slow-out editorial glide. */
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-const BLUR_IN = (blur: number) => ({ filter: `blur(${blur}px)` });
-
 export default function Landing() {
   const prefersReducedMotion = useReducedMotion();
   const [selected, setSelected] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+
+  // Hero copy follows the hovered language first, then the selected one.
+  const activeCode = hovered ?? selected;
+  const active =
+    LANGUAGES.find((lang) => lang.code === activeCode) ?? LANGUAGES[0];
   const selectedLanguage = LANGUAGES.find((lang) => lang.code === selected);
 
-  const headlineWords = ["Choose", "your", "language"];
+  const blur = (px: number) => ({ filter: `blur(${px}px)` });
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -63,45 +144,64 @@ export default function Landing() {
           </span>
         </motion.div>
 
-        {/* Headline — word-by-word blur-to-sharp reveal */}
-        <h1 className="mt-9 flex max-w-3xl flex-wrap items-baseline justify-center gap-x-[0.26em] text-center font-display text-4xl font-bold leading-[1.08] tracking-[-0.02em] sm:mt-10 sm:text-5xl lg:text-6xl">
-          {headlineWords.map((word, index) => (
-            <motion.span
-              key={word}
+        {/* Headline — localized to the hovered / selected language, blur-to-sharp swap */}
+        <div className="mt-9 w-full sm:mt-10">
+          <AnimatePresence mode="wait">
+            <motion.h1
+              key={active.code}
+              lang={active.code}
+              dir={active.dir}
               initial={{
                 opacity: 0,
-                y: prefersReducedMotion ? 0 : 22,
-                ...(prefersReducedMotion ? {} : BLUR_IN(10)),
+                y: prefersReducedMotion ? 0 : 20,
+                ...(prefersReducedMotion ? {} : blur(12)),
               }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{
-                duration: 0.8,
-                ease: EASE,
-                delay: 0.12 + index * 0.09,
+              exit={{
+                opacity: 0,
+                y: prefersReducedMotion ? 0 : -12,
+                ...(prefersReducedMotion ? {} : blur(8)),
               }}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="mx-auto max-w-3xl text-center font-display text-4xl font-bold leading-[1.12] tracking-[-0.02em] sm:text-5xl lg:text-6xl"
             >
-              {word}
-            </motion.span>
-          ))}
-        </h1>
+              {active.label}
+            </motion.h1>
+          </AnimatePresence>
+        </div>
 
-        {/* Sub copy */}
-        <motion.p
-          initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EASE, delay: 0.5 }}
-          className="mt-5 max-w-xl text-center text-sm leading-relaxed text-muted-foreground sm:text-[15px]"
-        >
-          Everything Hyper builds for you — your business plan, feasibility
-          read and financial numbers — begins in the language you know best.
-        </motion.p>
+        {/* Tagline — follows the headline language */}
+        <div className="mt-5 min-h-10 sm:min-h-8">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={`tagline-${active.code}`}
+              lang={active.code}
+              dir={active.dir}
+              initial={{
+                opacity: 0,
+                y: prefersReducedMotion ? 0 : 10,
+                ...(prefersReducedMotion ? {} : blur(6)),
+              }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{
+                opacity: 0,
+                y: prefersReducedMotion ? 0 : -8,
+                ...(prefersReducedMotion ? {} : blur(4)),
+              }}
+              transition={{ duration: 0.5, ease: EASE }}
+              className="mx-auto max-w-xl text-center text-sm leading-relaxed text-muted-foreground sm:text-[15px]"
+            >
+              {active.tagline}
+            </motion.p>
+          </AnimatePresence>
+        </div>
 
         {/* Catalogue caption above the grid */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, ease: EASE, delay: 0.58 }}
-          className="mt-14 flex w-full max-w-[58rem] items-center gap-4 sm:mt-16"
+          transition={{ duration: 0.7, ease: EASE, delay: 0.45 }}
+          className="mt-12 flex w-full max-w-[58rem] items-center gap-4 sm:mt-14"
         >
           <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground sm:text-[11px]">
             Languages
@@ -130,16 +230,20 @@ export default function Landing() {
                 initial={{
                   opacity: 0,
                   x: prefersReducedMotion ? 0 : fromLeft ? 56 : -56,
-                  ...(prefersReducedMotion ? {} : BLUR_IN(12)),
+                  ...(prefersReducedMotion ? {} : blur(12)),
                 }}
                 animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
                 transition={{
                   duration: 0.8,
                   ease: EASE,
-                  delay: 0.62 + index * 0.05,
+                  delay: 0.5 + index * 0.05,
                 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.985 }}
                 onClick={() => setSelected(lang.code)}
+                onMouseEnter={() => setHovered(lang.code)}
+                onMouseLeave={() => setHovered(null)}
+                onFocus={() => setHovered(lang.code)}
+                onBlur={() => setHovered(null)}
                 className={
                   "group relative flex min-h-[92px] w-full flex-col items-center justify-center gap-1.5 rounded-md border px-3 py-5 text-center outline-none transition-[border-color,background-color,color,box-shadow] duration-300 ease-out sm:min-h-[116px] focus-visible:ring-2 focus-visible:ring-[#4f6d7a]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background " +
                   (isSelected
@@ -189,7 +293,11 @@ export default function Landing() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, ease: EASE, delay: 0.95 + LANGUAGES.length * 0.02 }}
+          transition={{
+            duration: 0.7,
+            ease: EASE,
+            delay: 0.9 + LANGUAGES.length * 0.02,
+          }}
           className="mt-12 flex w-full max-w-[58rem] items-center justify-between gap-6 border-t border-foreground/10 pt-4 text-[9px] uppercase tracking-[0.22em] text-muted-foreground sm:mt-14 sm:text-[10px]"
         >
           <span aria-hidden="true" className="hidden sm:inline">
