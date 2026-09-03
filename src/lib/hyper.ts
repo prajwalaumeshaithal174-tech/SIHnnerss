@@ -119,9 +119,9 @@ export const SECTORS: SectorSpec[] = ROWS.map(
 export const sectorByCode = (code: string): SectorSpec =>
   SECTORS.find((s) => s.code === code) ?? SECTORS.find((s) => s.code === "others")!;
 
-/** Localized sector label, falling back to the English profile name. */
+/** Localized sector label (English fallback comes from the locale registry). */
 export const sectorLabel = (lang: string, code: CategoryCode): string =>
-  langLocalize(lang, `sector.${code}` as const, sectorByCode(code).label);
+  langLocalize(lang, `sector.${code}` as const);
 
 /* ------------------------------------------------------------------ */
 /* Formatting helpers                                                  */
@@ -138,8 +138,6 @@ export const properName = (name: string): string =>
     .trim()
     .toLowerCase()
     .replace(/\b\p{L}/gu, (c) => c.toUpperCase());
-
-import { t as langLocalize } from "./locales";
 
 /** Stable, small hash so the same place always yields the same demo numbers. */
 export const hashText = (text: string): number => {
